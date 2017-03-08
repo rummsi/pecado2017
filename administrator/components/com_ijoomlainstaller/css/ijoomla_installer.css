@@ -1,0 +1,125 @@
+.text-red{
+	color:#FF0000;
+}
+
+.text-gray{
+	color:#999999;
+}
+
+input[type="button"]{
+	min-width:90px !important;
+}
+
+.table td {
+    border-top: 1px solid #DDDDDD !important;
+    line-height: 18px !important;
+    vertical-align: text-top !important;
+}
+
+input[type="text"]{
+	margin:0px !important;
+}
+
+.btn, a.btn{
+    min-width: 90px;
+}
+
+span.adag_tip {
+    position: relative;
+}
+.adag_tip:hover span {
+    display: inline;
+    border: 1px solid #D4D5AA;
+    background: #000000;
+    color: #FFFFFF;
+	border-radius:5px 5px 5px 5px;
+}
+.adag_tip span {
+    display: none;
+    padding: 2px 3px;
+    margin-left: 8px;
+    width: 212px;
+    position: absolute;
+    top: -5px;
+    left: 20px;
+    z-index: 1001;
+}
+.adag_tip img {
+    float: none;
+    margin: 0;
+}
+
+.label{
+	float:left !important;
+	border-radius: 3px 3px 3px 3px;
+    padding: 1px 4px 2px;
+}
+
+.row-fluid .span-label {
+	width: 100px !important;
+}
+
+/* css for Joomla 2.5 ------------------------------ */
+.table25{
+	width:100%;
+}
+
+.alert {
+	background-color: #FCF8E3;
+	border: 1px solid #FBEED5;
+	border-radius: 4px 4px 4px 4px;
+	color: #C09853;
+	margin-bottom: 18px;
+	padding: 8px 35px 8px 14px;
+	text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.alert-error{
+	background-color: #F2DEDE;
+	border-color: #EED3D7;
+	color: #B94A48;
+}
+
+.label-success, .badge-success {
+    background-color: #468847;
+}
+
+.label, .badge {
+    background-color: #999999;
+    color: #FFFFFF;
+    font-size: 10.998px;
+    font-weight: bold;
+    line-height: 14px;
+    text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.25);
+    vertical-align: baseline;
+    white-space: nowrap;
+}
+
+.label-warning, .badge-warning {
+    background-color: #F89406;
+}
+
+.label-success, .badge-success {
+    background-color: #468847;
+}
+
+.label-important, .badge-important {
+    background-color: #B94A48;
+}
+
+.buy-now{
+	float:right !important;
+	margin:auto;
+}
+
+.upgrade-jomsocial-msg{
+	font-size:17px;
+	color:#000000;
+}
+
+.old-message{
+	font-size:14px;
+	color:#FF0000;
+	background-color:#D4D0C8;
+	padding:3px;
+}
