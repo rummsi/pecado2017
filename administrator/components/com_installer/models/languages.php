@@ -2,7 +2,7 @@
 /**
  * @package     Joomla.Administrator
  * @subpackage  com_installer
- * @copyright   Copyright (C) 2005 - 2017 Open Source Matters, Inc. All rights reserved.
+ * @copyright   Copyright (C) 2005 - 2020 Open Source Matters, Inc. All rights reserved.
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
 
@@ -113,14 +113,35 @@ class InstallerModelLanguages extends JModelList
 	{
 		$updateSite = $this->getUpdateSite();
 
-		$jhttp = new JHttp;
-		$response = $jhttp->get($updateSite);
+		// Check whether the updateserver is found
+		if (empty($updateSite))
+		{
+			JFactory::getApplication()->enqueueMessage(JText::_('COM_INSTALLER_MSG_WARNING_NO_LANGUAGES_UPDATESERVER'), 'warning');
+
+			return;
+		}
+
+		$http = new JHttp;
+
+		try
+		{
+			$response = $http->get($updateSite);
+		}
+		catch (RuntimeException $e)
+		{
+			$response = null;
+		}
+
+		if ($response === null || $response->code !== 200)
+		{
+			JFactory::getApplication()->enqueueMessage(JText::sprintf('COM_INSTALLER_MSG_ERROR_CANT_CONNECT_TO_UPDATESERVER', $updateSite), 'error');
+
+			return;
+		}
 
 		$updateSiteXML = simplexml_load_string($response->body);
-
-		$languages = array();
-
-		$search = strtolower($this->getState('filter.search'));
+		$languages     = array();
+		$search        = strtolower($this->getState('filter.search'));
 
 		foreach ($updateSiteXML->extension as $extension)
 		{
@@ -128,7 +149,7 @@ class InstallerModelLanguages extends JModelList
 
 			foreach ($extension->attributes() as $key => $value)
 			{
-				$language->$key =  (string) $value;
+				$language->$key = (string) $value;
 			}
 
 			if ($search)
@@ -143,14 +164,17 @@ class InstallerModelLanguages extends JModelList
 			$languages[$language->name] = $language;
 		}
 
+		// Workaround for php 5.3
+		$that = $this;
+
 		// Sort the array by value of subarray
 		usort(
 			$languages,
-			function($a, $b)
+			function($a, $b) use ($that)
 			{
-				$ordering = $this->getState('list.ordering');
+				$ordering = $that->getState('list.ordering');
 
-				if (strtolower($this->getState('list.direction')) === 'asc')
+				if (strtolower($that->getState('list.direction')) === 'asc')
 				{
 					return StringHelper::strcmp($a->$ordering, $b->$ordering);
 				}
@@ -163,8 +187,9 @@ class InstallerModelLanguages extends JModelList
 
 		// Count the non-paginated list
 		$this->languageCount = count($languages);
+		$limit               = ($this->getState('list.limit') > 0) ? $this->getState('list.limit') : $this->languageCount;
 
-		return array_slice($languages, $this->getStart(), $this->getState('list.limit'));
+		return array_slice($languages, $this->getStart(), $limit);
 	}
 
 	/**
@@ -233,5 +258,4 @@ class InstallerModelLanguages extends JModelList
 	{
 		return strcmp($lang1->name, $lang2->name);
 	}
-
 }

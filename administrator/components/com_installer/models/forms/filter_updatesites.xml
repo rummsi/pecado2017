@@ -6,6 +6,7 @@
 		<field
 			name="search"
 			type="text"
+			inputmode="search"
 			label="COM_INSTALLER_UPDATESITES_FILTER_SEARCH_LABEL"
 			description="COM_INSTALLER_UPDATESITES_FILTER_SEARCH_DESC"
 			hint="JSEARCH_FILTER"
@@ -18,8 +19,8 @@
 			onchange="this.form.submit();"
 			>
 			<option value="">JOPTION_SELECT_PUBLISHED</option>
-			<option value="0">JUNPUBLISHED</option>
-			<option value="1">JPUBLISHED</option>
+			<option value="0">JDISABLED</option>
+			<option value="1">JENABLED</option>
 		</field>
 		<field
 			name="client_id"
@@ -51,6 +52,7 @@
 			description="JGLOBAL_SORT_BY"
 			onchange="this.form.submit();"
 			default="name ASC"
+			validate="options"
 			>
 			<option value="">JGLOBAL_SORT_BY</option>
 			<option value="enabled ASC">JSTATUS_ASC</option>

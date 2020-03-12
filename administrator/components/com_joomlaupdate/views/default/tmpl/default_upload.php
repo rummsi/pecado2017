@@ -3,7 +3,7 @@
  * @package     Joomla.Administrator
  * @subpackage  com_joomlaupdate
  *
- * @copyright   Copyright (C) 2005 - 2017 Open Source Matters, Inc. All rights reserved.
+ * @copyright   Copyright (C) 2005 - 2020 Open Source Matters, Inc. All rights reserved.
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
 
@@ -61,7 +61,7 @@ JFactory::getDocument()->addStyleDeclaration($css);
 
 <div class="alert alert-info">
 	<p>
-		<span class="icon icon-info"></span>
+		<span class="icon icon-info" aria-hidden="true"></span>
 		<?php echo JText::sprintf('COM_JOOMLAUPDATE_VIEW_DEFAULT_UPLOAD_INTRO', 'https://downloads.joomla.org/latest'); ?>
 	</p>
 </div>
@@ -98,7 +98,7 @@ JFactory::getDocument()->addStyleDeclaration($css);
 				<td>
 					<input class="input_box" id="install_package" name="install_package" type="file" size="57" /><br>
 					<?php $maxSize = JHtml::_('number.bytes', JUtility::getMaxUploadSize()); ?>
-					<?php echo JText::sprintf('JGLOBAL_MAXIMUM_UPLOAD_SIZE_LIMIT', $maxSize); ?>
+					<?php echo JText::sprintf('JGLOBAL_MAXIMUM_UPLOAD_SIZE_LIMIT', '&#x200E;' . $maxSize); ?>
 				</td>
 			</tr>
 			<tr>

@@ -3,7 +3,7 @@
  * @package     Joomla.Administrator
  * @subpackage  com_fields
  *
- * @copyright   Copyright (C) 2005 - 2017 Open Source Matters, Inc. All rights reserved.
+ * @copyright   Copyright (C) 2005 - 2020 Open Source Matters, Inc. All rights reserved.
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
 defined('_JEXEC') or die;
@@ -57,9 +57,7 @@ class FieldsViewField extends JViewLegacy
 		// Check for errors.
 		if (count($errors = $this->get('Errors')))
 		{
-			JError::raiseError(500, implode("\n", $errors));
-
-			return false;
+			throw new Exception(implode("\n", $errors), 500);
 		}
 
 		JFactory::getApplication()->input->set('hidemainmenu', true);
@@ -140,5 +138,7 @@ class FieldsViewField extends JViewLegacy
 		{
 			JToolbarHelper::cancel('field.cancel', 'JTOOLBAR_CLOSE');
 		}
+
+		JToolbarHelper::help('JHELP_COMPONENTS_FIELDS_FIELDS_EDIT');
 	}
 }

@@ -3,7 +3,7 @@
  * @package     Joomla.Site
  * @subpackage  com_fields
  *
- * @copyright   Copyright (C) 2005 - 2017 Open Source Matters, Inc. All rights reserved.
+ * @copyright   Copyright (C) 2005 - 2020 Open Source Matters, Inc. All rights reserved.
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
 defined('_JEXEC') or die;
@@ -41,28 +41,43 @@ if (key_exists('fields', $displayData))
 }
 else
 {
-	$fields = $item->fields ?: FieldsHelper::getFields($context, $item, true);
+	$fields = $item->jcfields ?: FieldsHelper::getFields($context, $item, true);
 }
 
-if (!$fields)
+if (empty($fields))
 {
 	return;
 }
 
-// Print the container tag
-echo '<dl class="fields-container">';
+$output = array();
 
-// Loop through the fields and print them
 foreach ($fields as $field)
 {
 	// If the value is empty do nothing
-	if (!isset($field->value) || $field->value == '')
+	if (!isset($field->value) || trim($field->value) === '')
 	{
 		continue;
 	}
 
-	echo FieldsHelper::render($context, 'field.render', array('field' => $field));
+	$class = $field->params->get('render_class');
+	$layout = $field->params->get('layout', 'render');
+	$content = FieldsHelper::render($context, 'field.' . $layout, array('field' => $field));
+
+	// If the content is empty do nothing
+	if (trim($content) === '') 
+	{
+		continue;
+	}
+
+	$output[] = '<dd class="field-entry ' . $class . '">' . $content . '</dd>';
 }
 
-// Close the container
-echo '</dl>';
+if (empty($output))
+{
+	return;
+}
+
+?>
+<dl class="fields-container">
+	<?php echo implode("\n", $output); ?>
+</dl>

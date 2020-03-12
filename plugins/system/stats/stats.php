@@ -3,11 +3,14 @@
  * @package     Joomla.Plugin
  * @subpackage  System.stats
  *
- * @copyright   Copyright (C) 2005 - 2017 Open Source Matters, Inc. All rights reserved.
+ * @copyright   Copyright (C) 2005 - 2020 Open Source Matters, Inc. All rights reserved.
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
 
 defined('_JEXEC') or die;
+
+// Uncomment the following line to enable debug mode for testing purposes. Note: statistics will be sent on every page load
+// define('PLG_SYSTEM_STATS_DEBUG', 1);
 
 /**
  * Statistics system plugin. This sends anonymous data back to the Joomla! Project about the
@@ -18,19 +21,25 @@ defined('_JEXEC') or die;
 class PlgSystemStats extends JPlugin
 {
 	/**
-	 * @const  integer
+	 * Indicates sending statistics is always allowed.
+	 *
+	 * @var    integer
 	 * @since  3.5
 	 */
 	const MODE_ALLOW_ALWAYS = 1;
 
 	/**
-	 * @const  integer
+	 * Indicates sending statistics is only allowed one time.
+	 *
+	 * @var    integer
 	 * @since  3.5
 	 */
 	const MODE_ALLOW_ONCE = 2;
 
 	/**
-	 * @const  integer
+	 * Indicates sending statistics is never allowed.
+	 *
+	 * @var    integer
 	 * @since  3.5
 	 */
 	const MODE_ALLOW_NEVER = 3;
@@ -52,7 +61,7 @@ class PlgSystemStats extends JPlugin
 	protected $db;
 
 	/**
-	 * Url to send the statistics.
+	 * URL to send the statistics.
 	 *
 	 * @var    string
 	 * @since  3.5
@@ -274,7 +283,7 @@ class PlgSystemStats extends JPlugin
 	/**
 	 * Get the layout paths
 	 *
-	 * @return  array()
+	 * @return  array
 	 *
 	 * @since   3.5
 	 */
@@ -309,13 +318,13 @@ class PlgSystemStats extends JPlugin
 	/**
 	 * Get the data that will be sent to the stats server.
 	 *
-	 * @return  array.
+	 * @return  array
 	 *
 	 * @since   3.5
 	 */
 	private function getStatsData()
 	{
-		return array(
+		$data = array(
 			'unique_id'   => $this->getUniqueId(),
 			'php_version' => PHP_VERSION,
 			'db_type'     => $this->db->name,
@@ -323,6 +332,14 @@ class PlgSystemStats extends JPlugin
 			'cms_version' => JVERSION,
 			'server_os'   => php_uname('s') . ' ' . php_uname('r')
 		);
+
+		// Check if we have a MariaDB version string and extract the proper version from it
+		if (preg_match('/^(?:5\.5\.5-)?(mariadb-)?(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)/i', $data['db_version'], $versionParts))
+		{
+			$data['db_version'] = $versionParts['major'] . '.' . $versionParts['minor'] . '.' . $versionParts['patch'];
+		}
+
+		return $data;
 	}
 
 	/**
@@ -363,7 +380,7 @@ class PlgSystemStats extends JPlugin
 	 */
 	private function isDebugEnabled()
 	{
-		return ((int) $this->params->get('debug', 0) === 1);
+		return defined('PLG_SYSTEM_STATS_DEBUG');
 	}
 
 	/**
@@ -435,7 +452,7 @@ class PlgSystemStats extends JPlugin
 		$this->params->set('lastrun', time());
 		$this->params->set('unique_id', $this->getUniqueId());
 		$interval = (int) $this->params->get('interval', 12);
-		$this->params->set('interval', $interval ? $interval : 12);
+		$this->params->set('interval', $interval ?: 12);
 
 		$query = $this->db->getQuery(true)
 				->update($this->db->quoteName('#__extensions'))

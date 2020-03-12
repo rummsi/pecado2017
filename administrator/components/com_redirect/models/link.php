@@ -3,7 +3,7 @@
  * @package     Joomla.Administrator
  * @subpackage  com_redirect
  *
- * @copyright   Copyright (C) 2005 - 2017 Open Source Matters, Inc. All rights reserved.
+ * @copyright   Copyright (C) 2005 - 2020 Open Source Matters, Inc. All rights reserved.
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
 
@@ -40,26 +40,7 @@ class RedirectModelLink extends JModelAdmin
 			return false;
 		}
 
-		$user = JFactory::getUser();
-
-		return $user->authorise('core.delete', 'com_redirect');
-	}
-
-	/**
-	 * Method to test whether a record can have its state edited.
-	 *
-	 * @param   object  $record  A record object.
-	 *
-	 * @return  boolean  True if allowed to change the state of the record. Defaults to the permission set in the component.
-	 *
-	 * @since   1.6
-	 */
-	protected function canEditState($record)
-	{
-		$user = JFactory::getUser();
-
-		// Check the component since there are no categories or other assets.
-		return $user->authorise('core.edit.state', 'com_redirect');
+		return parent::canDelete($record);
 	}
 
 	/**
@@ -109,7 +90,7 @@ class RedirectModelLink extends JModelAdmin
 			$form->setFieldAttribute('published', 'filter', 'unset');
 		}
 
-		// If in advanced mode then we make sure the new url field is not compulsory and the header
+		// If in advanced mode then we make sure the new URL field is not compulsory and the header
 		// field compulsory in case people select non-3xx redirects
 		if (JComponentHelper::getParams('com_redirect')->get('mode', 0) == true)
 		{
@@ -245,6 +226,7 @@ class RedirectModelLink extends JModelAdmin
 			{
 				$query->set($db->quoteName('comment') . ' = ' . $db->quote($comment));
 			}
+
 			$db->setQuery($query);
 
 			try
@@ -261,5 +243,4 @@ class RedirectModelLink extends JModelAdmin
 
 		return true;
 	}
-
 }

@@ -4,6 +4,7 @@
 		<field
 			name="search"
 			type="text"
+			inputmode="search"
 			label="COM_USERS_SEARCH_USERS"
 			description="COM_USERS_SEARCH_IN_NAME"
 			hint="JSEARCH_FILTER"
@@ -36,12 +37,12 @@
 			<option value="">COM_USERS_FILTER_USERGROUP</option>
 		</field>
 		<field
-				name="lastvisitrange"
-				type="lastvisitdaterange"
-				label="COM_USERS_OPTION_FILTER_LAST_VISIT_DATE"
-				description="COM_USERS_OPTION_FILTER_LAST_VISIT_DATE"
-				onchange="this.form.submit();"
-		>
+			name="lastvisitrange"
+			type="lastvisitdaterange"
+			label="COM_USERS_OPTION_FILTER_LAST_VISIT_DATE"
+			description="COM_USERS_OPTION_FILTER_LAST_VISIT_DATE"
+			onchange="this.form.submit();"
+			>
 			<option value="">COM_USERS_OPTION_FILTER_LAST_VISIT_DATE</option>
 		</field>
 		<field
@@ -62,6 +63,7 @@
 			description="COM_CONTENT_LIST_FULL_ORDERING_DESC"
 			onchange="this.form.submit();"
 			default="a.name ASC"
+			validate="options"
 			>
 			<option value="">JGLOBAL_SORT_BY</option>
 			<option value="a.name ASC">COM_USERS_HEADING_NAME_ASC</option>
@@ -84,10 +86,10 @@
 		<field
 			name="limit"
 			type="limitbox"
-			class="input-mini"
-			default="25"
 			label="COM_CONTENT_LIST_LIMIT"
 			description="COM_CONTENT_LIST_LIMIT_DESC"
+			class="input-mini"
+			default="25"
 			onchange="this.form.submit();"
 		/>
 	</fields>

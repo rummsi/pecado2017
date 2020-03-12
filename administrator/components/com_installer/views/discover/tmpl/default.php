@@ -3,7 +3,7 @@
  * @package     Joomla.Administrator
  * @subpackage  com_installer
  *
- * @copyright   Copyright (C) 2005 - 2017 Open Source Matters, Inc. All rights reserved.
+ * @copyright   Copyright (C) 2005 - 2020 Open Source Matters, Inc. All rights reserved.
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
 
@@ -34,11 +34,15 @@ $listDirn  = $this->escape($this->state->get('list.direction'));
 			<?php endif; ?>
 			<?php echo JLayoutHelper::render('joomla.searchtools.default', array('view' => $this)); ?>
 			<div class="clearfix"></div>
+			<div class="alert alert-no-items alert-info">
+				<?php echo JText::_('COM_INSTALLER_MSG_DISCOVER_DESCRIPTION'); ?>
+			</div>
 			<?php if (empty($this->items)) : ?>
 			<div class="alert alert-no-items">
 				<?php echo JText::_('JGLOBAL_NO_MATCHING_RESULTS'); ?>
 			</div>
 			<?php else : ?>
+
 			<table class="table table-striped">
 				<thead>
 					<tr>
@@ -115,7 +119,6 @@ $listDirn  = $this->escape($this->state->get('list.direction'));
 				</tbody>
 			</table>
 			<?php endif; ?>
-			<div><?php echo JText::_('COM_INSTALLER_MSG_DISCOVER_DESCRIPTION'); ?></div>
 			<input type="hidden" name="task" value="" />
 			<input type="hidden" name="boxchecked" value="0" />
 			<?php echo JHtml::_('form.token'); ?>

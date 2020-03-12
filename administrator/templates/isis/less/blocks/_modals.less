@@ -25,6 +25,7 @@ body.modal-open {
   padding: 0;
   width: 100%;
   height: auto;
+  max-height: none;
   .container-fluid {
     padding-top: 15px;
     padding-bottom: 15px;
@@ -38,4 +39,20 @@ body.modal-open {
 .contentpane {
   padding: 10px;
   height: auto
+}
+
+@media (min-width: @md) {
+	.row-fluid .modal-batch [class*="span"] {
+		margin-left: 0;
+	}
+}
+
+// Component pop-up
+.container-popup {
+	padding: 10px;
+}
+
+// Media modal
+.field-media-wrapper iframe {
+  max-height: 75vh;
 }

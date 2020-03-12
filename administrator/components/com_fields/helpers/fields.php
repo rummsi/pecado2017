@@ -3,7 +3,7 @@
  * @package     Joomla.Administrator
  * @subpackage  com_fields
  *
- * @copyright   Copyright (C) 2005 - 2017 Open Source Matters, Inc. All rights reserved.
+ * @copyright   Copyright (C) 2005 - 2020 Open Source Matters, Inc. All rights reserved.
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
 defined('_JEXEC') or die;
@@ -75,11 +75,11 @@ class FieldsHelper
 	 * Should the value being prepared to be shown in an HTML context then
 	 * prepareValue must be set to true. No further escaping needs to be done.
 	 * The values of the fields can be overridden by an associative array where the keys
-	 * can be an id or an alias and it's corresponding value.
+	 * have to be a name and its corresponding value.
 	 *
 	 * @param   string    $context           The context of the content passed to the helper
 	 * @param   stdClass  $item              item
-	 * @param   boolean   $prepareValue      prepareValue
+	 * @param   int|bool  $prepareValue      (if int is display event): 1 - AfterTitle, 2 - BeforeDisplay, 3 - AfterDisplay, 0 - OFF
 	 * @param   array     $valuesToOverride  The values to override
 	 *
 	 * @return  array
@@ -90,8 +90,7 @@ class FieldsHelper
 	{
 		if (self::$fieldsCache === null)
 		{
-			// Load the model
-			JLoader::import('joomla.application.component.model');
+			// Load the model			
 			JModelLegacy::addIncludePath(JPATH_ADMINISTRATOR . '/components/com_fields/models', 'FieldsModel');
 
 			self::$fieldsCache = JModelLegacy::getInstance('Fields', 'FieldsModel', array(
@@ -106,11 +105,14 @@ class FieldsHelper
 		{
 			$item = (object) $item;
 		}
-		if (JLanguageMultilang::isEnabled() && isset($item->language) && $item->language !='*')
+
+		if (JLanguageMultilang::isEnabled() && isset($item->language) && $item->language != '*')
 		{
 			self::$fieldsCache->setState('filter.language', array('*', $item->language));
 		}
+
 		self::$fieldsCache->setState('filter.context', $context);
+		self::$fieldsCache->setState('filter.assigned_cat_ids', array());
 
 		/*
 		 * If item has assigned_cat_ids parameter display only fields which
@@ -145,6 +147,16 @@ class FieldsHelper
 				self::$fieldCache = JModelLegacy::getInstance('Field', 'FieldsModel', array('ignore_request' => true));
 			}
 
+			$fieldIds = array_map(
+				function ($f)
+				{
+					return $f->id;
+				},
+				$fields
+			);
+
+			$fieldValues = self::$fieldCache->getFieldValues($fieldIds, $item->id);
+
 			$new = array();
 
 			foreach ($fields as $key => $original)
@@ -155,33 +167,34 @@ class FieldsHelper
 				 */
 				$field = clone $original;
 
-				if ($valuesToOverride && key_exists($field->alias, $valuesToOverride))
+				if ($valuesToOverride && key_exists($field->name, $valuesToOverride))
 				{
-					$field->value = $valuesToOverride[$field->alias];
+					$field->value = $valuesToOverride[$field->name];
 				}
 				elseif ($valuesToOverride && key_exists($field->id, $valuesToOverride))
 				{
 					$field->value = $valuesToOverride[$field->id];
 				}
-				else
+				elseif (key_exists($field->id, $fieldValues))
 				{
-					$field->value = self::$fieldCache->getFieldValue($field->id, $field->context, $item->id);
+					$field->value = $fieldValues[$field->id];
 				}
 
-				if ($field->value === '' || $field->value === null)
+				if (!isset($field->value) || $field->value === '')
 				{
 					$field->value = $field->default_value;
 				}
 
 				$field->rawvalue = $field->value;
 
-				if ($prepareValue)
+				// If boolean prepare, if int, it is the event type: 1 - After Title, 2 - Before Display, 3 - After Display, 0 - Do not prepare
+				if ($prepareValue && (is_bool($prepareValue) || $prepareValue === (int) $field->params->get('display', '2')))
 				{
 					JPluginHelper::importPlugin('fields');
 
 					$dispatcher = JEventDispatcher::getInstance();
 
-					// Event allow plugins to modfify the output of the field before it is prepared
+					// Event allow plugins to modify the output of the field before it is prepared
 					$dispatcher->trigger('onCustomFieldsBeforePrepareField', array($context, $item, &$field));
 
 					// Gathering the value for the field
@@ -189,10 +202,10 @@ class FieldsHelper
 
 					if (is_array($value))
 					{
-						$value = implode($value, ' ');
+						$value = implode(' ', $value);
 					}
 
-					// Event allow plugins to modfify the output of the prepared field
+					// Event allow plugins to modify the output of the prepared field
 					$dispatcher->trigger('onCustomFieldsAfterPrepareField', array($context, $item, $field, &$value));
 
 					// Assign the value
@@ -233,7 +246,7 @@ class FieldsHelper
 		 */
 		if ($parts = self::extract($context))
 		{
-			// Trying to render the layout on the component fom the context
+			// Trying to render the layout on the component from the context
 			$value = JLayoutHelper::render($layoutFile, $displayData, null, array('component' => $parts[0], 'client' => 0));
 		}
 
@@ -267,6 +280,8 @@ class FieldsHelper
 			return true;
 		}
 
+		$context = $parts[0] . '.' . $parts[1];
+
 		// When no fields available return here
 		$fields = self::getFields($parts[0] . '.' . $parts[1], new JObject);
 
@@ -278,20 +293,28 @@ class FieldsHelper
 		$component = $parts[0];
 		$section   = $parts[1];
 
-		$assignedCatids = isset($data->catid) ? $data->catid : (isset($data->fieldscatid) ? $data->fieldscatid : null);
+		$assignedCatids = isset($data->catid) ? $data->catid : (isset($data->fieldscatid) ? $data->fieldscatid : $form->getValue('catid'));
 
-		if (!$assignedCatids && $form->getField('catid'))
+		// Account for case that a submitted form has a multi-value category id field (e.g. a filtering form), just use the first category
+		$assignedCatids = is_array($assignedCatids)
+			? (int) reset($assignedCatids)
+			: (int) $assignedCatids;
+
+		if (!$assignedCatids && $formField = $form->getField('catid'))
 		{
+			$assignedCatids = $formField->getAttribute('default', null);
+
 			// Choose the first category available
 			$xml = new DOMDocument;
-			$xml->loadHTML($form->getField('catid')->__get('input'));
+			$xml->loadHTML($formField->__get('input'));
 			$options = $xml->getElementsByTagName('option');
 
-			if ($firstChoice = $options->item(0))
+			if (!$assignedCatids && $firstChoice = $options->item(0))
 			{
 				$assignedCatids = $firstChoice->getAttribute('value');
-				$data->fieldscatid = $assignedCatids;
 			}
+
+			$data->fieldscatid = $assignedCatids;
 		}
 
 		/*
@@ -300,25 +323,6 @@ class FieldsHelper
 		 */
 		if ($form->getField('catid') && $parts[0] != 'com_fields')
 		{
-			// The uri to submit to
-			$uri = clone JUri::getInstance('index.php');
-
-			/*
-			 * Removing the catid parameter from the actual url and set it as
-			 * return
-			*/
-			$returnUri = clone JUri::getInstance();
-			$returnUri->setVar('catid', null);
-			$uri->setVar('return', base64_encode($returnUri->toString()));
-
-			// Setting the options
-			$uri->setVar('option', 'com_fields');
-			$uri->setVar('task', 'field.storeform');
-			$uri->setVar('context', $parts[0] . '.' . $parts[1]);
-			$uri->setVar('formcontrol', $form->getFormControl());
-			$uri->setVar('view', null);
-			$uri->setVar('layout', null);
-
 			/*
 			 * Setting the onchange event to reload the page when the category
 			 * has changed
@@ -328,18 +332,18 @@ class FieldsHelper
 			// Preload spindle-wheel when we need to submit form due to category selector changed
 			JFactory::getDocument()->addScriptDeclaration("
 			function categoryHasChanged(element) {
-				Joomla.loadingLayer('show');
 				var cat = jQuery(element);
 				if (cat.val() == '" . $assignedCatids . "')return;
-				jQuery('input[name=task]').val('field.storeform');
-				element.form.action='" . $uri . "';
+				Joomla.loadingLayer('show');
+				jQuery('input[name=task]').val('" . $section . ".reload');
 				element.form.submit();
 			}
 			jQuery( document ).ready(function() {
 				Joomla.loadingLayer('load');
 				var formControl = '#" . $form->getFormControl() . "_catid';
 				if (!jQuery(formControl).val() != '" . $assignedCatids . "'){jQuery(formControl).val('" . $assignedCatids . "');}
-			});");
+			});"
+			);
 		}
 
 		// Getting the fields
@@ -355,12 +359,10 @@ class FieldsHelper
 		// Creating the dom
 		$xml = new DOMDocument('1.0', 'UTF-8');
 		$fieldsNode = $xml->appendChild(new DOMElement('form'))->appendChild(new DOMElement('fields'));
-		$fieldsNode->setAttribute('name', 'params');
+		$fieldsNode->setAttribute('name', 'com_fields');
 
 		// Organizing the fields according to their group
-		$fieldsPerGroup = array(
-			0 => array()
-		);
+		$fieldsPerGroup = array(0 => array());
 
 		foreach ($fields as $field)
 		{
@@ -381,16 +383,36 @@ class FieldsHelper
 				JFormHelper::addFieldPath($path);
 			}
 
+			if ($path = $fieldTypes[$field->type]['rules'])
+			{
+				// Add the lookup path for the rule
+				JFormHelper::addRulePath($path);
+			}
+
 			$fieldsPerGroup[$field->group_id][] = $field;
 		}
 
 		// On the front, sometimes the admin fields path is not included
 		JTable::addIncludePath(JPATH_ADMINISTRATOR . '/components/com_fields/tables');
 
-		// Looping trough the groups
-		foreach ($fieldsPerGroup as $group_id => $groupFields)
+		$model = JModelLegacy::getInstance('Groups', 'FieldsModel', array('ignore_request' => true));
+		$model->setState('filter.context', $context);
+
+		/**
+		 * $model->getItems() would only return existing groups, but we also
+		 * have the 'default' group with id 0 which is not in the database,
+		 * so we create it virtually here.
+		 */
+		$defaultGroup = new \stdClass;
+		$defaultGroup->id = 0;
+		$defaultGroup->title = '';
+		$defaultGroup->description = '';
+		$iterateGroups = array_merge(array($defaultGroup), $model->getItems());
+
+		// Looping through the groups
+		foreach ($iterateGroups as $group)
 		{
-			if (!$groupFields)
+			if (empty($fieldsPerGroup[$group->id]))
 			{
 				continue;
 			}
@@ -398,69 +420,52 @@ class FieldsHelper
 			// Defining the field set
 			/** @var DOMElement $fieldset */
 			$fieldset = $fieldsNode->appendChild(new DOMElement('fieldset'));
-			$fieldset->setAttribute('name', 'fields-' . $group_id);
+			$fieldset->setAttribute('name', 'fields-' . $group->id);
 			$fieldset->setAttribute('addfieldpath', '/administrator/components/' . $component . '/models/fields');
 			$fieldset->setAttribute('addrulepath', '/administrator/components/' . $component . '/models/rules');
 
-			$label       = '';
-			$description = '';
+			$label       = $group->title;
+			$description = $group->description;
 
-			if ($group_id)
+			if (!$label)
 			{
-				$group = JTable::getInstance('Group', 'FieldsTable');
-				$group->load($group_id);
+				$key = strtoupper($component . '_FIELDS_' . $section . '_LABEL');
 
-				if ($group->id)
+				if (!JFactory::getLanguage()->hasKey($key))
 				{
-					$label       = $group->title;
-					$description = $group->description;
+					$key = 'JGLOBAL_FIELDS';
 				}
+
+				$label = $key;
 			}
 
-			if (!$label || !$description)
+			if (!$description)
 			{
-				$lang = JFactory::getLanguage();
+				$key = strtoupper($component . '_FIELDS_' . $section . '_DESC');
 
-				if (!$label)
+				if (JFactory::getLanguage()->hasKey($key))
 				{
-					$key = strtoupper($component . '_FIELDS_' . $section . '_LABEL');
-
-					if (!$lang->hasKey($key))
-					{
-						$key = 'JGLOBAL_FIELDS';
-					}
-
-					$label = JText::_($key);
-				}
-
-				if (!$description)
-				{
-					$key = strtoupper($component . '_FIELDS_' . $section . '_DESC');
-
-					if ($lang->hasKey($key))
-					{
-						$description = JText::_($key);
-					}
+					$description = $key;
 				}
 			}
 
 			$fieldset->setAttribute('label', $label);
 			$fieldset->setAttribute('description', strip_tags($description));
 
-			// Looping trough the fields for that context
-			foreach ($groupFields as $field)
+			// Looping through the fields for that context
+			foreach ($fieldsPerGroup[$group->id] as $field)
 			{
 				try
 				{
-					JEventDispatcher::getInstance()->trigger('onCustomFieldsPrepareDom', array($field, $fieldset, $form));
+					JFactory::getApplication()->triggerEvent('onCustomFieldsPrepareDom', array($field, $fieldset, $form));
 
 					/*
 					 * If the field belongs to an assigned_cat_id but the assigned_cat_ids in the data
 					 * is not known, set the required flag to false on any circumstance.
 					 */
-					if (!$assignedCatids && !empty($field->assigned_cat_ids) && $form->getField($field->alias))
+					if (!$assignedCatids && !empty($field->assigned_cat_ids) && $form->getField($field->name))
 					{
-						$form->setFieldAttribute($field->alias, 'required', 'false');
+						$form->setFieldAttribute($field->name, 'required', 'false');
 					}
 				}
 				catch (Exception $e)
@@ -469,7 +474,7 @@ class FieldsHelper
 				}
 			}
 
-			// When he field set is empty, then remove it
+			// When the field set is empty, then remove it
 			if (!$fieldset->hasChildNodes())
 			{
 				$fieldsNode->removeChild($fieldset);
@@ -479,9 +484,7 @@ class FieldsHelper
 		// Loading the XML fields string into the form
 		$form->load($xml->saveXML());
 
-		$model = JModelLegacy::getInstance('Field', 'FieldsModel', array(
-				'ignore_request' => true)
-		);
+		$model = JModelLegacy::getInstance('Field', 'FieldsModel', array('ignore_request' => true));
 
 		if ((!isset($data->id) || !$data->id) && JFactory::getApplication()->input->getCmd('controller') == 'config.display.modules'
 			&& JFactory::getApplication()->isClient('site'))
@@ -490,7 +493,7 @@ class FieldsHelper
 			$data->id = JFactory::getApplication()->input->getInt('id');
 		}
 
-		// Looping trough the fields again to set the value
+		// Looping through the fields again to set the value
 		if (!isset($data->id) || !$data->id)
 		{
 			return true;
@@ -498,7 +501,7 @@ class FieldsHelper
 
 		foreach ($fields as $field)
 		{
-			$value = $model->getFieldValue($field->id, $field->context, $data->id);
+			$value = $model->getFieldValue($field->id, $data->id);
 
 			if ($value === null)
 			{
@@ -508,7 +511,7 @@ class FieldsHelper
 			if (!is_array($value) && $value !== '')
 			{
 				// Function getField doesn't cache the fields, so we try to do it only when necessary
-				$formField = $form->getField($field->alias, 'params');
+				$formField = $form->getField($field->name, 'com_fields');
 
 				if ($formField && $formField->forceMultiple)
 				{
@@ -517,7 +520,7 @@ class FieldsHelper
 			}
 
 			// Setting the value on the field
-			$form->setValue($field->alias, 'params', $value);
+			$form->setValue($field->name, 'com_fields', $value);
 		}
 
 		return true;
@@ -540,49 +543,49 @@ class FieldsHelper
 	}
 
 	/**
-	 * Adds Count Items for Category Manager.
+	 * Return a boolean based on field (and field group) display / show_on settings
 	 *
-	 * @param   stdClass[]  &$items  The field category objects
+	 * @param   stdClass  $field  The field
 	 *
-	 * @return  stdClass[]
+	 * @return  boolean
 	 *
-	 * @since   3.7.0
+	 * @since   3.8.7
 	 */
-	public static function countItems(&$items)
+	public static function displayFieldOnForm($field)
 	{
-		$db = JFactory::getDbo();
+		$app = JFactory::getApplication();
 
-		foreach ($items as $item)
+		// Detect if the field should be shown at all
+		if ($field->params->get('show_on') == 1 && $app->isClient('administrator'))
 		{
-			$item->count_trashed     = 0;
-			$item->count_archived    = 0;
-			$item->count_unpublished = 0;
-			$item->count_published   = 0;
+			return false;
+		}
+		elseif ($field->params->get('show_on') == 2 && $app->isClient('site'))
+		{
+			return false;
+		}
 
-			$query = $db->getQuery(true);
-			$query->select('state, count(1) AS count')
-				->from($db->quoteName('#__fields'))
-				->where('group_id = ' . (int) $item->id)
-				->group('state');
-			$db->setQuery($query);
+		if (!self::canEditFieldValue($field))
+		{
+			$fieldDisplayReadOnly = $field->params->get('display_readonly', '2');
 
-			$fields = $db->loadObjectList();
-
-			$states = array(
-				'-2' => 'count_trashed',
-				'0'  => 'count_unpublished',
-				'1'  => 'count_published',
-				'2'  => 'count_archived',
-			);
-
-			foreach ($fields as $field)
+			if ($fieldDisplayReadOnly == '2')
 			{
-				$property = $states[$field->state];
-				$item->$property = $field->count;
+				// Inherit from field group display read-only setting
+				$groupModel = JModelLegacy::getInstance('Group', 'FieldsModel', array('ignore_request' => true));
+				$groupDisplayReadOnly = $groupModel->getItem($field->group_id)->params->get('display_readonly', '1');
+				$fieldDisplayReadOnly = $groupDisplayReadOnly;
+			}
+
+			if ($fieldDisplayReadOnly == '0')
+			{
+				// Do not display field on form when field is read-only
+				return false;
 			}
 		}
 
-		return $items;
+		// Display field on form
+		return true;
 	}
 
 	/**
@@ -607,9 +610,9 @@ class FieldsHelper
 		$query = $db->getQuery(true);
 
 		$query->select($db->quoteName('c.title'))
-				->from($db->quoteName('#__fields_categories', 'a'))
-				->join('LEFT', $db->quoteName('#__categories', 'c') . ' ON a.category_id = c.id')
-				->where('field_id = ' . $fieldId);
+			->from($db->quoteName('#__fields_categories', 'a'))
+			->join('INNER', $db->quoteName('#__categories', 'c') . ' ON a.category_id = c.id')
+			->where('field_id = ' . $fieldId);
 
 		$db->setQuery($query);
 
@@ -619,7 +622,7 @@ class FieldsHelper
 	/**
 	 * Gets the fields system plugin extension id.
 	 *
-	 * @return  int  The fields system plugin extension id.
+	 * @return  integer  The fields system plugin extension id.
 	 *
 	 * @since   3.7.0
 	 */
@@ -627,10 +630,10 @@ class FieldsHelper
 	{
 		$db    = JFactory::getDbo();
 		$query = $db->getQuery(true)
-		->select($db->quoteName('extension_id'))
-		->from($db->quoteName('#__extensions'))
-		->where($db->quoteName('folder') . ' = ' . $db->quote('system'))
-		->where($db->quoteName('element') . ' = ' . $db->quote('fields'));
+			->select($db->quoteName('extension_id'))
+			->from($db->quoteName('#__extensions'))
+			->where($db->quoteName('folder') . ' = ' . $db->quote('system'))
+			->where($db->quoteName('element') . ' = ' . $db->quote('fields'));
 		$db->setQuery($query);
 
 		try
@@ -723,10 +726,29 @@ class FieldsHelper
 				{
 					$fieldDescription['path'] = null;
 				}
+
+				if (!array_key_exists('rules', $fieldDescription))
+				{
+					$fieldDescription['rules'] = null;
+				}
+
 				$data[$fieldDescription['type']] = $fieldDescription;
 			}
 		}
 
 		return $data;
+	}
+
+	/**
+	 * Clears the internal cache for the custom fields.
+	 *
+	 * @return  void
+	 *
+	 * @since   3.8.0
+	 */
+	public static function clearFieldsCache()
+	{
+		self::$fieldCache  = null;
+		self::$fieldsCache = null;
 	}
 }

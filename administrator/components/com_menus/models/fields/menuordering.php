@@ -3,7 +3,7 @@
  * @package     Joomla.Administrator
  * @subpackage  com_menus
  *
- * @copyright   Copyright (C) 2005 - 2017 Open Source Matters, Inc. All rights reserved.
+ * @copyright   Copyright (C) 2005 - 2020 Open Source Matters, Inc. All rights reserved.
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
 
@@ -12,7 +12,7 @@ defined('JPATH_BASE') or die;
 JFormHelper::loadFieldClass('list');
 
 /**
- * Form Field class for the Joomla Framework.
+ * Menu Ordering field.
  *
  * @since  1.6
  */
@@ -48,7 +48,7 @@ class JFormFieldMenuOrdering extends JFormFieldList
 
 		$db = JFactory::getDbo();
 		$query = $db->getQuery(true)
-			->select('a.id AS value, a.title AS text, a.client_id AS clientId')
+			->select('a.id AS value, a.title AS text, a.client_id AS ' . $db->quoteName('clientId'))
 			->from('#__menu AS a')
 
 			->where('a.published >= 0')

@@ -3,7 +3,7 @@
  * @package     Joomla.Administrator
  * @subpackage  com_associations
  *
- * @copyright   Copyright (C) 2005 - 2017 Open Source Matters, Inc. All rights reserved.
+ * @copyright   Copyright (C) 2005 - 2020 Open Source Matters, Inc. All rights reserved.
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
 
@@ -81,7 +81,10 @@ JFactory::getDocument()->addScriptDeclaration('
 						<?php echo JText::_('JGRID_HEADING_LANGUAGE'); ?>
 					</th>
 					<th width="5%" class="nowrap">
-						<?php echo JHtml::_('searchtools.sort', 'COM_ASSOCIATIONS_HEADING_ASSOCIATION', 'association', $listDirn, $listOrder); ?>
+						<?php echo JText::_('COM_ASSOCIATIONS_HEADING_ASSOCIATION'); ?>
+					</th>
+					<th width="15%" class="nowrap">
+						<?php echo JText::_('COM_ASSOCIATIONS_HEADING_NO_ASSOCIATION'); ?>
 					</th>
 					<?php if (!empty($this->typeFields['menutype'])) : ?>
 						<th width="10%" class="nowrap">
@@ -107,7 +110,6 @@ JFactory::getDocument()->addScriptDeclaration('
 			</tfoot>
 			<tbody>
 			<?php foreach ($this->items as $i => $item) :
-				$canCheckin = true;
 				$canEdit    = AssociationsHelper::allowEdit($this->extensionName, $this->typeName, $item->id);
 				$canCheckin = $canManageCheckin || AssociationsHelper::canCheckinItem($this->extensionName, $this->typeName, $item->id);
 				$isCheckout = AssociationsHelper::isCheckoutItem($this->extensionName, $this->typeName, $item->id);
@@ -118,35 +120,44 @@ JFactory::getDocument()->addScriptDeclaration('
 							<span class="<?php echo $iconStates[$this->escape($item->state)]; ?>"></span>
 						</td>
 					<?php endif; ?>
-					<td class="nowrap has-context">
-						<?php if (isset($item->level)) : ?>
-							<?php echo JLayoutHelper::render('joomla.html.treeprefix', array('level' => $item->level)); ?>
-						<?php endif; ?>
-						<?php if ($canCheckin && $isCheckout) : ?>
-							<?php echo JHtml::_('jgrid.checkedout', $i, $item->editor, $item->checked_out_time, 'associations.', $canCheckin); ?>
-						<?php endif; ?>
-						<?php if ($canEdit && !$isCheckout) : ?>
-							<a href="<?php echo JRoute::_($this->editUri . '&id=' . (int) $item->id); ?>">
-							<?php echo $this->escape($item->title); ?></a>
-						<?php else : ?>
-							<span title="<?php echo JText::sprintf('JFIELD_ALIAS_LABEL', $this->escape($item->alias)); ?>"><?php echo $this->escape($item->title); ?></span>
-						<?php endif; ?>
-						<?php if (!empty($this->typeFields['alias'])) : ?>
-							<span class="small">
-								<?php echo JText::sprintf('JGLOBAL_LIST_ALIAS', $this->escape($item->alias)); ?>
-							</span>
-						<?php endif; ?>
-						<?php if (!empty($this->typeFields['catid'])) : ?>
-							<div class="small">
-								<?php echo JText::_('JCATEGORY') . ": " . $this->escape($item->category_title); ?>
-							</div>
-						<?php endif; ?>
+					<td class="has-context">
+						<div class="pull-left break-word">
+							<span style="display: none"><?php echo JHtml::_('grid.id', $i, $item->id); ?></span>
+							<?php if (isset($item->level)) : ?>
+								<?php echo JLayoutHelper::render('joomla.html.treeprefix', array('level' => $item->level)); ?>
+							<?php endif; ?>
+							<?php if (!$canCheckin && $isCheckout) : ?>
+								<?php echo JHtml::_('jgrid.checkedout', $i, $item->editor, $item->checked_out_time, 'associations.'); ?>
+							<?php endif; ?>
+							<?php if ($canCheckin && $isCheckout) : ?>
+								<?php echo JHtml::_('jgrid.checkedout', $i, $item->editor, $item->checked_out_time, 'associations.', $canCheckin); ?>
+							<?php endif; ?>
+							<?php if ($canEdit && !$isCheckout) : ?>
+								<a href="<?php echo JRoute::_($this->editUri . '&id=' . (int) $item->id); ?>">
+								<?php echo $this->escape($item->title); ?></a>
+							<?php else : ?>
+								<span title="<?php echo JText::sprintf('JFIELD_ALIAS_LABEL', $this->escape($item->alias)); ?>"><?php echo $this->escape($item->title); ?></span>
+							<?php endif; ?>
+							<?php if (!empty($this->typeFields['alias'])) : ?>
+								<span class="small">
+									<?php echo JText::sprintf('JGLOBAL_LIST_ALIAS', $this->escape($item->alias)); ?>
+								</span>
+							<?php endif; ?>
+							<?php if (!empty($this->typeFields['catid'])) : ?>
+								<div class="small">
+									<?php echo JText::_('JCATEGORY') . ": " . $this->escape($item->category_title); ?>
+								</div>
+							<?php endif; ?>
+						</div>
 					</td>
 					<td class="small">
-						<?php echo $item->language_title ? JHtml::_('image', 'mod_languages/' . $item->language_image . '.gif', $item->language_title, array('title' => $item->language_title), true) . '&nbsp;' . $this->escape($item->language_title) : JText::_('JUNDEFINED'); ?>
+						<?php echo JLayoutHelper::render('joomla.content.language', $item); ?>
 					</td>
 					<td>
-						<?php echo AssociationsHelper::getAssociationHtmlList($this->extensionName, $this->typeName, (int) $item->id, $item->language, !$isCheckout); ?>
+						<?php echo AssociationsHelper::getAssociationHtmlList($this->extensionName, $this->typeName, (int) $item->id, $item->language, !$isCheckout, false); ?>
+					</td>
+					<td>
+						<?php echo AssociationsHelper::getAssociationHtmlList($this->extensionName, $this->typeName, (int) $item->id, $item->language, !$isCheckout, true); ?>
 					</td>
 					<?php if (!empty($this->typeFields['menutype'])) : ?>
 						<td class="small">
@@ -167,6 +178,7 @@ JFactory::getDocument()->addScriptDeclaration('
 		</table>
 	<?php endif; ?>
 	<input type="hidden" name="task" value=""/>
+	<input type="hidden" name="boxchecked" value="0" />
 	<?php echo JHtml::_('form.token'); ?>
 	</div>
 </form>

@@ -3,19 +3,20 @@
  * @package     Joomla.Administrator
  * @subpackage  com_associations
  *
- * @copyright   Copyright (C) 2005 - 2017 Open Source Matters, Inc. All rights reserved.
+ * @copyright   Copyright (C) 2005 - 2020 Open Source Matters, Inc. All rights reserved.
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
 
 defined('JPATH_BASE') or die;
 
 use Joomla\Utilities\ArrayHelper;
+use Joomla\CMS\Language\LanguageHelper;
 
 JLoader::register('AssociationsHelper', JPATH_ADMINISTRATOR . '/components/com_associations/helpers/associations.php');
 JFormHelper::loadFieldClass('list');
 
 /**
- * Form Field class for the Joomla Framework.
+ * Field listing item languages
  *
  * @since  3.7.0
  */
@@ -40,7 +41,7 @@ class JFormFieldItemLanguage extends JFormFieldList
 	{
 		$input = JFactory::getApplication()->input;
 
-		list($extensionName, $typeName) = explode('.', $input->get('itemtype'));
+		list($extensionName, $typeName) = explode('.', $input->get('itemtype', '', 'string'));
 
 		// Get the extension specific helper method
 		$helper = AssociationsHelper::getExtensionHelper($extensionName);
@@ -57,7 +58,7 @@ class JFormFieldItemLanguage extends JFormFieldList
 		$canCreate = AssociationsHelper::allowAdd($extensionName, $typeName);
 
 		// Gets existing languages.
-		$existingLanguages = AssociationsHelper::getContentLanguages();
+		$existingLanguages = LanguageHelper::getContentLanguages(array(0, 1));
 
 		$options = array();
 
@@ -79,7 +80,7 @@ class JFormFieldItemLanguage extends JFormFieldList
 				$itemId                    = (int) $associations[$language->lang_code]['id'];
 				$options[$langCode]->value = $language->lang_code . ':' . $itemId . ':edit';
 
-				 // Check if user does have permission to edit the associated item.
+				// Check if user does have permission to edit the associated item.
 				$canEdit = AssociationsHelper::allowEdit($extensionName, $typeName, $itemId);
 
 				// Check if item can be checked out

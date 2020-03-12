@@ -14,7 +14,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 var stat_total = 0;
@@ -192,7 +192,6 @@ pingExtract = function()
 
 startExtract = function()
 {
-	console.log("started");
 	// Reset variables
 	this.stat_files = 0;
 	this.stat_inbytes = 0;
@@ -245,7 +244,6 @@ stepExtract = function(data)
 		stat_percent = (stat_inbytes * 100) / joomlaupdate_totalsize;
 
 		// Update GUI
-		stat_inbytes += data.bytesIn;
 		stat_outbytes += data.bytesOut;
 		stat_files += data.files;
 
@@ -263,10 +261,10 @@ stepExtract = function(data)
 			jQuery('#progress-bar').removeClass('bar-success');
 		}
 
-		jQuery('#extpercent').text(stat_percent.toFixed(1));
+		jQuery('#extpercent').text(stat_percent.toFixed(1) + '%');
 		jQuery('#extbytesin').text(stat_inbytes);
 		jQuery('#extbytesout').text(stat_outbytes);
-		jQuery('#extfiles').text(data.lastfile);
+		jQuery('#extfiles').text(stat_files);
 
 		// Do AJAX post
 		post = {

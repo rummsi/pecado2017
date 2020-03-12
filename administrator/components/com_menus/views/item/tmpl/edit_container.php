@@ -3,7 +3,7 @@
  * @package     Joomla.Administrator
  * @subpackage  com_menus
  *
- * @copyright   Copyright (C) 2005 - 2017 Open Source Matters, Inc. All rights reserved.
+ * @copyright   Copyright (C) 2005 - 2020 Open Source Matters, Inc. All rights reserved.
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
 defined('_JEXEC') or die;
@@ -92,7 +92,7 @@ JFactory::getDocument()->addStyleDeclaration($style);
 
 					foreach ($menuLinks as $i => $link) : ?>
 						<?php
-						if ($extension = $link->componentname):
+						if ($extension = $link->element):
 							$lang->load("$extension.sys", JPATH_ADMINISTRATOR, null, false, true)
 							|| $lang->load("$extension.sys", JPATH_ADMINISTRATOR . '/components/' . $extension, null, false, true);
 						endif;

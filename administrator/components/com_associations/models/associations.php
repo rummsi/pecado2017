@@ -3,7 +3,7 @@
  * @package     Joomla.Administrator
  * @subpackage  com_associations
  *
- * @copyright   Copyright (C) 2005 - 2017 Open Source Matters, Inc. All rights reserved.
+ * @copyright   Copyright (C) 2005 - 2020 Open Source Matters, Inc. All rights reserved.
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
 
@@ -60,7 +60,7 @@ class AssociationsModelAssociations extends JModelList
 	 *
 	 * @return  void
 	 *
-	 * @since  3.7.0
+	 * @since   3.7.0
 	 */
 	protected function populateState($ordering = 'ordering', $direction = 'asc')
 	{
@@ -144,13 +144,13 @@ class AssociationsModelAssociations extends JModelList
 	/**
 	 * Build an SQL query to load the list data.
 	 *
-	 * @return  JDatabaseQuery|bool
+	 * @return  JDatabaseQuery|boolean
 	 *
 	 * @since   3.7.0
 	 */
 	protected function getListQuery()
 	{
-		$type = null;
+		$type         = null;
 
 		list($extensionName, $typeName) = explode('.', $this->state->get('itemtype'));
 
@@ -369,8 +369,7 @@ class AssociationsModelAssociations extends JModelList
 		// Filter on the level.
 		if ($level = $this->getState('filter.level'))
 		{
-			$tableAlias = in_array($extensionName, array('com_menus', 'com_categories')) ? 'a' : 'c';
-			$query->where($db->qn($tableAlias . '.level') . ' <= ' . ((int) $level + (int) $baselevel - 1));
+			$query->where($db->qn('a.level') . ' <= ' . ((int) $level + (int) $baselevel - 1));
 		}
 
 		// Filter by menu type.
@@ -396,15 +395,19 @@ class AssociationsModelAssociations extends JModelList
 			{
 				$search = $db->quote('%' . str_replace(' ', '%', $db->escape(trim($search), true) . '%'));
 				$query->where('(' . $db->qn($fields['title']) . ' LIKE ' . $search
-					. ' OR ' . $db->qn($fields['alias']) . ' LIKE ' . $search . ')');
+					. ' OR ' . $db->qn($fields['alias']) . ' LIKE ' . $search . ')'
+				);
 			}
 		}
 
 		// Add the group by clause
 		$query->group($db->qn($groupby));
 
-		// Add the list ordering clause.
-		$query->order($db->escape($this->getState('list.ordering') . ' ' . $this->getState('list.direction')));
+		// Add the list ordering clause
+		$listOrdering  = $this->state->get('list.ordering', 'id');
+		$orderDirn     = $this->state->get('list.direction', 'ASC');
+
+		$query->order($db->escape($listOrdering) . ' ' . $db->escape($orderDirn));
 
 		return $query;
 	}

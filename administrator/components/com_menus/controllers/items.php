@@ -3,7 +3,7 @@
  * @package     Joomla.Administrator
  * @subpackage  com_menus
  *
- * @copyright   Copyright (C) 2005 - 2017 Open Source Matters, Inc. All rights reserved.
+ * @copyright   Copyright (C) 2005 - 2020 Open Source Matters, Inc. All rights reserved.
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
 
@@ -50,13 +50,13 @@ class MenusControllerItems extends JControllerAdmin
 	/**
 	 * Rebuild the nested set tree.
 	 *
-	 * @return  bool  False on failure or error, true on success.
+	 * @return  boolean  False on failure or error, true on success.
 	 *
 	 * @since   1.6
 	 */
 	public function rebuild()
 	{
-		JSession::checkToken() or jexit(JText::_('JINVALID_TOKEN'));
+		$this->checkToken();
 
 		$this->setRedirect('index.php?option=com_menus&view=items');
 
@@ -88,7 +88,7 @@ class MenusControllerItems extends JControllerAdmin
 	 */
 	public function saveorder()
 	{
-		JSession::checkToken() or jexit(JText::_('JINVALID_TOKEN'));
+		$this->checkToken();
 
 		try
 		{
@@ -131,7 +131,7 @@ class MenusControllerItems extends JControllerAdmin
 	public function setDefault()
 	{
 		// Check for request forgeries
-		JSession::checkToken('request') or die(JText::_('JINVALID_TOKEN'));
+		$this->checkToken('request');
 
 		$app = JFactory::getApplication();
 
@@ -174,11 +174,11 @@ class MenusControllerItems extends JControllerAdmin
 		}
 
 		$this->setRedirect(
-				JRoute::_(
-						'index.php?option=' . $this->option . '&view=' . $this->view_list
-						. '&menutype=' . $app->getUserState('com_menus.items.menutype'), false
-						)
-				);
+			JRoute::_(
+				'index.php?option=' . $this->option . '&view=' . $this->view_list
+				. '&menutype=' . $app->getUserState('com_menus.items.menutype'), false
+			)
+		);
 	}
 
 	/**
@@ -191,7 +191,7 @@ class MenusControllerItems extends JControllerAdmin
 	public function publish()
 	{
 		// Check for request forgeries
-		JSession::checkToken() or die(JText::_('JINVALID_TOKEN'));
+		$this->checkToken();
 
 		// Get items to publish from the request.
 		$cid = JFactory::getApplication()->input->get('cid', array(), 'array');
@@ -222,14 +222,15 @@ class MenusControllerItems extends JControllerAdmin
 			try
 			{
 				$model->publish($cid, $value);
-				$errors = $model->getErrors();
+				$errors      = $model->getErrors();
+				$messageType = 'message';
 
 				if ($value == 1)
 				{
 					if ($errors)
 					{
-						$app = JFactory::getApplication();
-						$app->enqueueMessage(JText::plural($this->text_prefix . '_N_ITEMS_FAILED_PUBLISHING', count($cid)), 'error');
+						$messageType = 'error';
+						$ntext       = $this->text_prefix . '_N_ITEMS_FAILED_PUBLISHING';
 					}
 					else
 					{
@@ -245,7 +246,7 @@ class MenusControllerItems extends JControllerAdmin
 					$ntext = $this->text_prefix . '_N_ITEMS_TRASHED';
 				}
 
-				$this->setMessage(JText::plural($ntext, count($cid)));
+				$this->setMessage(JText::plural($ntext, count($cid)), $messageType);
 			}
 			catch (Exception $e)
 			{
@@ -272,7 +273,7 @@ class MenusControllerItems extends JControllerAdmin
 	public function checkin()
 	{
 		// Check for request forgeries.
-		JSession::checkToken() or jexit(JText::_('JINVALID_TOKEN'));
+		$this->checkToken();
 
 		$ids = JFactory::getApplication()->input->post->get('cid', array(), 'array');
 

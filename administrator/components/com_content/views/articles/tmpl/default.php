@@ -3,7 +3,7 @@
  * @package     Joomla.Administrator
  * @subpackage  com_content
  *
- * @copyright   Copyright (C) 2005 - 2017 Open Source Matters, Inc. All rights reserved.
+ * @copyright   Copyright (C) 2005 - 2020 Open Source Matters, Inc. All rights reserved.
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
 
@@ -13,12 +13,16 @@ JHtml::addIncludePath(JPATH_COMPONENT . '/helpers/html');
 
 JHtml::_('bootstrap.tooltip');
 JHtml::_('behavior.multiselect');
+JHtml::_('formbehavior.chosen', '.multipleTags', null, array('placeholder_text_multiple' => JText::_('JOPTION_SELECT_TAG')));
+JHtml::_('formbehavior.chosen', '.multipleCategories', null, array('placeholder_text_multiple' => JText::_('JOPTION_SELECT_CATEGORY')));
+JHtml::_('formbehavior.chosen', '.multipleAccessLevels', null, array('placeholder_text_multiple' => JText::_('JOPTION_SELECT_ACCESS')));
+JHtml::_('formbehavior.chosen', '.multipleAuthors', null, array('placeholder_text_multiple' => JText::_('JOPTION_SELECT_AUTHOR')));
 JHtml::_('formbehavior.chosen', 'select');
 
 $app       = JFactory::getApplication();
 $user      = JFactory::getUser();
 $userId    = $user->get('id');
-$listOrder = str_replace(' ' . $this->state->get('list.direction'), '', $this->state->get('list.fullordering'));
+$listOrder = $this->escape($this->state->get('list.ordering'));
 $listDirn  = $this->escape($this->state->get('list.direction'));
 $saveOrder = $listOrder == 'a.ordering';
 $columns   = 10;
@@ -30,6 +34,10 @@ if (strpos($listOrder, 'publish_up') !== false)
 elseif (strpos($listOrder, 'publish_down') !== false)
 {
 	$orderingColumn = 'publish_down';
+}
+elseif (strpos($listOrder, 'modified') !== false)
+{
+	$orderingColumn = 'modified';
 }
 else
 {
@@ -129,6 +137,10 @@ $assoc = JLanguageAssociations::isEnabled();
 					$canCheckin = $user->authorise('core.manage',     'com_checkin') || $item->checked_out == $userId || $item->checked_out == 0;
 					$canEditOwn = $user->authorise('core.edit.own',   'com_content.article.' . $item->id) && $item->created_by == $userId;
 					$canChange  = $user->authorise('core.edit.state', 'com_content.article.' . $item->id) && $canCheckin;
+					$canEditCat    = $user->authorise('core.edit',       'com_content.category.' . $item->catid);
+					$canEditOwnCat = $user->authorise('core.edit.own',   'com_content.category.' . $item->catid) && $item->category_uid == $userId;
+					$canEditParCat    = $user->authorise('core.edit',       'com_content.category.' . $item->parent_category_id);
+					$canEditOwnParCat = $user->authorise('core.edit.own',   'com_content.category.' . $item->parent_category_id) && $item->parent_category_uid == $userId;
 					?>
 					<tr class="row<?php echo $i % 2; ?>" sortable-group-id="<?php echo $item->catid; ?>">
 						<td class="order nowrap center hidden-phone">
@@ -144,10 +156,10 @@ $assoc = JLanguageAssociations::isEnabled();
 							}
 							?>
 							<span class="sortable-handler<?php echo $iconClass ?>">
-								<span class="icon-menu"></span>
+								<span class="icon-menu" aria-hidden="true"></span>
 							</span>
 							<?php if ($canChange && $saveOrder) : ?>
-								<input type="text" style="display:none" name="order[]" size="5" value="<?php echo $item->ordering; ?>" class="width-20 text-area-order " />
+								<input type="text" style="display:none" name="order[]" size="5" value="<?php echo $item->ordering; ?>" class="width-20 text-area-order" />
 							<?php endif; ?>
 						</td>
 						<td class="center">
@@ -172,11 +184,6 @@ $assoc = JLanguageAssociations::isEnabled();
 								<?php if ($item->checked_out) : ?>
 									<?php echo JHtml::_('jgrid.checkedout', $i, $item->editor, $item->checked_out_time, 'articles.', $canCheckin); ?>
 								<?php endif; ?>
-								<?php if ($item->language == '*') : ?>
-									<?php $language = JText::alt('JALL', 'language'); ?>
-								<?php else : ?>
-									<?php $language = $item->language_title ? $this->escape($item->language_title) : JText::_('JUNDEFINED'); ?>
-								<?php endif; ?>
 								<?php if ($canEdit || $canEditOwn) : ?>
 									<a class="hasTooltip" href="<?php echo JRoute::_('index.php?option=com_content&task=article.edit&id=' . $item->id); ?>" title="<?php echo JText::_('JACTION_EDIT'); ?>">
 										<?php echo $this->escape($item->title); ?></a>
@@ -184,10 +191,68 @@ $assoc = JLanguageAssociations::isEnabled();
 									<span title="<?php echo JText::sprintf('JFIELD_ALIAS_LABEL', $this->escape($item->alias)); ?>"><?php echo $this->escape($item->title); ?></span>
 								<?php endif; ?>
 								<span class="small break-word">
-									<?php echo JText::sprintf('JGLOBAL_LIST_ALIAS', $this->escape($item->alias)); ?>
+									<?php if (empty($item->note)) : ?>
+										<?php echo JText::sprintf('JGLOBAL_LIST_ALIAS', $this->escape($item->alias)); ?>
+									<?php else : ?>
+										<?php echo JText::sprintf('JGLOBAL_LIST_ALIAS_NOTE', $this->escape($item->alias), $this->escape($item->note)); ?>
+									<?php endif; ?>
 								</span>
 								<div class="small">
-									<?php echo JText::_('JCATEGORY') . ': ' . $this->escape($item->category_title); ?>
+									<?php
+									$ParentCatUrl = JRoute::_('index.php?option=com_categories&task=category.edit&id=' . $item->parent_category_id . '&extension=com_content');
+									$CurrentCatUrl = JRoute::_('index.php?option=com_categories&task=category.edit&id=' . $item->catid . '&extension=com_content');
+									$EditCatTxt = JText::_('COM_CONTENT_EDIT_CATEGORY');
+
+										echo JText::_('JCATEGORY') . ': ';
+
+										if ($item->category_level != '1') :
+											if ($item->parent_category_level != '1') :
+												echo ' &#187; ';
+											endif;
+										endif;
+
+										if (JFactory::getLanguage()->isRtl())
+										{
+											if ($canEditCat || $canEditOwnCat) :
+												echo '<a class="hasTooltip" href="' . $CurrentCatUrl . '" title="' . $EditCatTxt . '">';
+											endif;
+											echo $this->escape($item->category_title);
+											if ($canEditCat || $canEditOwnCat) :
+												echo '</a>';
+											endif;
+
+											if ($item->category_level != '1') :
+												echo ' &#171; ';
+												if ($canEditParCat || $canEditOwnParCat) :
+													echo '<a class="hasTooltip" href="' . $ParentCatUrl . '" title="' . $EditCatTxt . '">';
+												endif;
+												echo $this->escape($item->parent_category_title);
+												if ($canEditParCat || $canEditOwnParCat) :
+													echo '</a>';
+												endif;
+											endif;
+										}
+										else
+										{
+											if ($item->category_level != '1') :
+												if ($canEditParCat || $canEditOwnParCat) :
+													echo '<a class="hasTooltip" href="' . $ParentCatUrl . '" title="' . $EditCatTxt . '">';
+												endif;
+												echo $this->escape($item->parent_category_title);
+												if ($canEditParCat || $canEditOwnParCat) :
+													echo '</a>';
+												endif;
+												echo ' &#187; ';
+											endif;
+											if ($canEditCat || $canEditOwnCat) :
+												echo '<a class="hasTooltip" href="' . $CurrentCatUrl . '" title="' . $EditCatTxt . '">';
+											endif;
+											echo $this->escape($item->category_title);
+											if ($canEditCat || $canEditOwnCat) :
+												echo '</a>';
+											endif;
+										}
+									?>
 								</div>
 							</div>
 						</td>
@@ -202,13 +267,22 @@ $assoc = JLanguageAssociations::isEnabled();
 						</td>
 						<?php endif; ?>
 						<td class="small hidden-phone">
-							<?php if ($item->created_by_alias) : ?>
-								<a class="hasTooltip" href="<?php echo JRoute::_('index.php?option=com_users&task=user.edit&id=' . (int) $item->created_by); ?>" title="<?php echo JText::_('JAUTHOR'); ?>">
-								<?php echo $this->escape($item->author_name); ?></a>
-								<div class="small"><?php echo JText::sprintf('JGLOBAL_LIST_ALIAS', $this->escape($item->created_by_alias)); ?></div>
+							<?php if ((int) $item->created_by != 0) : ?>
+								<?php if ($item->created_by_alias) : ?>
+									<a class="hasTooltip" href="<?php echo JRoute::_('index.php?option=com_users&task=user.edit&id=' . (int) $item->created_by); ?>" title="<?php echo JText::_('JAUTHOR'); ?>">
+									<?php echo $this->escape($item->author_name); ?></a>
+									<div class="smallsub"><?php echo JText::sprintf('JGLOBAL_LIST_ALIAS', $this->escape($item->created_by_alias)); ?></div>
+								<?php else : ?>
+									<a class="hasTooltip" href="<?php echo JRoute::_('index.php?option=com_users&task=user.edit&id=' . (int) $item->created_by); ?>" title="<?php echo JText::_('JAUTHOR'); ?>">
+									<?php echo $this->escape($item->author_name); ?></a>
+								<?php endif; ?>
 							<?php else : ?>
-								<a class="hasTooltip" href="<?php echo JRoute::_('index.php?option=com_users&task=user.edit&id=' . (int) $item->created_by); ?>" title="<?php echo JText::_('JAUTHOR'); ?>">
-								<?php echo $this->escape($item->author_name); ?></a>
+								<?php if ($item->created_by_alias) : ?>
+									<?php echo JText::_('JNONE'); ?>
+									<div class="smallsub"><?php echo JText::sprintf('JGLOBAL_LIST_ALIAS', $this->escape($item->created_by_alias)); ?></div>
+								<?php else : ?>
+									<?php echo JText::_('JNONE'); ?>
+								<?php endif; ?>
 							<?php endif; ?>
 						</td>
 						<td class="small hidden-phone">
@@ -252,8 +326,8 @@ $assoc = JLanguageAssociations::isEnabled();
 					'bootstrap.renderModal',
 					'collapseModal',
 					array(
-						'title' => JText::_('COM_CONTENT_BATCH_OPTIONS'),
-						'footer' => $this->loadTemplate('batch_footer')
+						'title'  => JText::_('COM_CONTENT_BATCH_OPTIONS'),
+						'footer' => $this->loadTemplate('batch_footer'),
 					),
 					$this->loadTemplate('batch_body')
 				); ?>

@@ -3,7 +3,7 @@
  * @package     Joomla.Administrator
  * @subpackage  com_associations
  *
- * @copyright   Copyright (C) 2005 - 2017 Open Source Matters, Inc. All rights reserved.
+ * @copyright   Copyright (C) 2005 - 2020 Open Source Matters, Inc. All rights reserved.
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
 
@@ -69,7 +69,8 @@ class AssociationsViewAssociations extends JViewLegacy
 
 		if (!JLanguageAssociations::isEnabled())
 		{
-			JFactory::getApplication()->enqueueMessage(JText::_('COM_ASSOCIATIONS_ERROR_NO_ASSOC'), 'warning');
+			$link = JRoute::_('index.php?option=com_plugins&task=plugin.edit&extension_id=' . AssociationsHelper::getLanguagefilterPluginId());
+			JFactory::getApplication()->enqueueMessage(JText::sprintf('COM_ASSOCIATIONS_ERROR_NO_ASSOC', $link), 'warning');
 		}
 		elseif ($this->state->get('itemtype') == '' || $this->state->get('language') == '')
 		{
@@ -128,21 +129,25 @@ class AssociationsViewAssociations extends JViewLegacy
 					unset($this->activeFilters['state']);
 					$this->filterForm->removeField('state', 'filter');
 				}
-				if ($type !== 'category')
+
+				if (empty($support['category']))
 				{
 					unset($this->activeFilters['category_id']);
 					$this->filterForm->removeField('category_id', 'filter');
 				}
+
 				if ($extensionName !== 'com_menus')
 				{
 					unset($this->activeFilters['menutype']);
 					$this->filterForm->removeField('menutype', 'filter');
 				}
-				if (!in_array($extensionName, array('com_categories', 'com_menus')))
+
+				if (empty($support['level']))
 				{
 					unset($this->activeFilters['level']);
 					$this->filterForm->removeField('level', 'filter');
 				}
+
 				if (empty($support['acl']))
 				{
 					unset($this->activeFilters['access']);
@@ -153,6 +158,15 @@ class AssociationsViewAssociations extends JViewLegacy
 				if (empty($support['catid']))
 				{
 					$this->filterForm->setFieldAttribute('category_id', 'extension', $extensionName, 'filter');
+
+					if ($this->getLayout() == 'modal')
+					{
+						// We need to change the category filter to only show categories tagged to All or to the forced language.
+						if ($forcedLanguage = JFactory::getApplication()->input->get('forcedLanguage', '', 'CMD'))
+						{
+							$this->filterForm->setFieldAttribute('category_id', 'language', '*,' . $forcedLanguage, 'filter');
+						}
+					}
 				}
 
 				$this->items      = $this->get('Items');
@@ -206,14 +220,14 @@ class AssociationsViewAssociations extends JViewLegacy
 			JToolbarHelper::title(
 				JText::sprintf(
 					'COM_ASSOCIATIONS_TITLE_LIST', JText::_($this->extensionName), JText::_($languageKey)
-				), 'contract'
+				), 'contract assoc'
 			);
 		}
 		else
 		{
-			JToolbarHelper::title(JText::_('COM_ASSOCIATIONS_TITLE_LIST_SELECT'), 'contract');
+			JToolbarHelper::title(JText::_('COM_ASSOCIATIONS_TITLE_LIST_SELECT'), 'contract assoc');
 		}
-	
+
 		if ($user->authorise('core.admin', 'com_associations') || $user->authorise('core.options', 'com_associations'))
 		{
 			if (!isset($this->typeName))
@@ -221,12 +235,10 @@ class AssociationsViewAssociations extends JViewLegacy
 				JToolbarHelper::custom('associations.purge', 'purge', 'purge', 'COM_ASSOCIATIONS_PURGE', false, false);
 				JToolbarHelper::custom('associations.clean', 'refresh', 'refresh', 'COM_ASSOCIATIONS_DELETE_ORPHANS', false, false);
 			}
+
 			JToolbarHelper::preferences('com_associations');
 		}
 
-		/*
-		 * @todo Help page
-		*/
-		JToolbarHelper::help('JGLOBAL_HELP');
+		JToolbarHelper::help('JHELP_COMPONENTS_ASSOCIATIONS');
 	}
 }

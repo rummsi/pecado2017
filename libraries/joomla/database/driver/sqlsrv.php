@@ -3,7 +3,7 @@
  * @package     Joomla.Platform
  * @subpackage  Database
  *
- * @copyright   Copyright (C) 2005 - 2017 Open Source Matters, Inc. All rights reserved.
+ * @copyright   Copyright (C) 2005 - 2020 Open Source Matters, Inc. All rights reserved.
  * @license     GNU General Public License version 2 or later; see LICENSE
  */
 
@@ -12,8 +12,8 @@ defined('JPATH_PLATFORM') or die;
 /**
  * SQL Server database driver
  *
- * @see    https://msdn.microsoft.com/en-us/library/cc296152(SQL.90).aspx
- * @since  12.1
+ * @link   https://msdn.microsoft.com/en-us/library/cc296152(SQL.90).aspx
+ * @since  3.0.0
  */
 class JDatabaseDriverSqlsrv extends JDatabaseDriver
 {
@@ -21,7 +21,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 * The name of the database driver.
 	 *
 	 * @var    string
-	 * @since  12.1
+	 * @since  3.0.0
 	 */
 	public $name = 'sqlsrv';
 
@@ -40,7 +40,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 * used for the opening quote and the second for the closing quote.
 	 *
 	 * @var    string
-	 * @since  12.1
+	 * @since  3.0.0
 	 */
 	protected $nameQuote = '[]';
 
@@ -49,13 +49,13 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 * defined in child classes to hold the appropriate value for the engine.
 	 *
 	 * @var    string
-	 * @since  12.1
+	 * @since  3.0.0
 	 */
 	protected $nullDate = '1900-01-01 00:00:00';
 
 	/**
 	 * @var    string  The minimum supported database version.
-	 * @since  12.1
+	 * @since  3.0.0
 	 */
 	protected static $dbMinimum = '10.50.1600.1';
 
@@ -64,7 +64,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  boolean  True on success, false otherwise.
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 */
 	public static function isSupported()
 	{
@@ -76,7 +76,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @param   array  $options  List of options used to configure the connection
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 */
 	public function __construct($options)
 	{
@@ -92,21 +92,11 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	}
 
 	/**
-	 * Destructor.
-	 *
-	 * @since   12.1
-	 */
-	public function __destruct()
-	{
-		$this->disconnect();
-	}
-
-	/**
 	 * Connects to the database if needed.
 	 *
 	 * @return  void  Returns void if the database connected successfully.
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 * @throws  RuntimeException
 	 */
 	public function connect()
@@ -128,13 +118,13 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 		// Make sure the SQLSRV extension for PHP is installed and enabled.
 		if (!self::isSupported())
 		{
-			throw new JDatabaseExceptionUnsupported('PHP extension sqlsrv_connect is not available.');
+			throw new JDatabaseExceptionUnsupported('The sqlsrv extension for PHP is not installed or enabled..');
 		}
 
 		// Attempt to connect to the server.
 		if (!($this->connection = @ sqlsrv_connect($this->options['host'], $config)))
 		{
-			throw new JDatabaseExceptionConnecting('Database sqlsrv_connect failed');
+			throw new JDatabaseExceptionConnecting('Database sqlsrv_connect failed, ' . print_r(sqlsrv_errors(), true));
 		}
 
 		// Make sure that DB warnings are not returned as errors.
@@ -148,6 +138,9 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 
 		// Set charactersets.
 		$this->utf = $this->setUtf();
+
+		// Set QUOTED_IDENTIFIER always ON
+		sqlsrv_query($this->connection, 'SET QUOTED_IDENTIFIER ON');
 	}
 
 	/**
@@ -155,7 +148,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  void
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 */
 	public function disconnect()
 	{
@@ -180,7 +173,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  array  Any constraints available for the table.
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 */
 	protected function getTableConstraints($tableName)
 	{
@@ -204,7 +197,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  void
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 */
 	protected function renameConstraints($constraints = array(), $prefix = null, $backup = null)
 	{
@@ -228,13 +221,27 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  string  The escaped string.
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 */
 	public function escape($text, $extra = false)
 	{
+		if (is_int($text))
+		{
+			return $text;
+		}
+
+		if (is_float($text))
+		{
+			// Force the dot as a decimal point.
+			return str_replace(',', '.', $text);
+		}
+
 		$result = str_replace("'", "''", $text);
 
-		// Fix for SQL Sever escape sequence, see https://support.microsoft.com/en-us/kb/164291
+		// SQL Server does not accept NULL byte in query string
+		$result = str_replace("\0", "' + CHAR(0) + N'", $result);
+
+		// Fix for SQL Server escape sequence, see https://support.microsoft.com/en-us/kb/164291
 		$result = str_replace(
 			array("\\\n",     "\\\r",     "\\\\\r\r\n"),
 			array("\\\\\n\n", "\\\\\r\r", "\\\\\r\n\r\n"),
@@ -262,8 +269,8 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  string  The quoted input string.
 	 *
-	 * @note    Accepting an array of strings was added in 12.3.
-	 * @since   11.1
+	 * @note    Accepting an array of strings was added in 3.1.4.
+	 * @since   1.7.0
 	 */
 	public function quote($text, $escape = true)
 	{
@@ -277,11 +284,26 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	}
 
 	/**
+	 * Quotes a binary string to database requirements for use in database queries.
+	 *
+	 * @param   mixed  $data  A binary string to quote.
+	 *
+	 * @return  string  The binary quoted input string.
+	 *
+	 * @since   3.9.12
+	 */
+	public function quoteBinary($data)
+	{
+		// ODBC syntax for hexadecimal literals
+		return '0x' . bin2hex($data);
+	}
+
+	/**
 	 * Determines if the connection to the server is active.
 	 *
 	 * @return  boolean  True if connected to the database engine.
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 */
 	public function connected()
 	{
@@ -297,7 +319,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  JDatabaseDriverSqlsrv  Returns this object to support chaining.
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 */
 	public function dropTable($tableName, $ifExists = true)
 	{
@@ -326,7 +348,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  integer  The number of affected rows.
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 */
 	public function getAffectedRows()
 	{
@@ -340,7 +362,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  mixed  The collation in use by the database or boolean false if not supported.
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 */
 	public function getCollation()
 	{
@@ -367,7 +389,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  integer   The number of returned rows.
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 */
 	public function getNumRows($cursor = null)
 	{
@@ -384,7 +406,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  array  An array of fields.
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 * @throws  RuntimeException
 	 */
 	public function getTableColumns($table, $typeOnly = true)
@@ -430,7 +452,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  array  A list of the create SQL for the tables.
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 * @throws  RuntimeException
 	 */
 	public function getTableCreate($tables)
@@ -447,7 +469,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  array  An array of the column specification for the table.
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 * @throws  RuntimeException
 	 */
 	public function getTableKeys($table)
@@ -463,7 +485,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  array  An array of all the tables in the database.
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 * @throws  RuntimeException
 	 */
 	public function getTableList()
@@ -482,7 +504,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  string  The database connector version.
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 */
 	public function getVersion()
 	{
@@ -502,7 +524,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  boolean    True on success.
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 * @throws  RuntimeException
 	 */
 	public function insertObject($table, &$object, $key = null)
@@ -561,7 +583,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  integer  The value of the auto-increment field from the last inserted row.
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 */
 	public function insertid()
 	{
@@ -578,7 +600,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  mixed  A database cursor resource on success, boolean false on failure.
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 * @throws  RuntimeException
 	 * @throws  Exception
 	 */
@@ -703,97 +725,32 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  string  The processed SQL statement.
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 */
 	public function replacePrefix($query, $prefix = '#__')
 	{
-		$startPos = 0;
-		$literal = '';
-
 		$query = trim($query);
-		$n = strlen($query);
 
-		while ($startPos < $n)
+		if (strpos($query, "'"))
 		{
-			$ip = strpos($query, $prefix, $startPos);
+			$parts = explode("'", $query);
 
-			if ($ip === false)
+			for ($nIndex = 0, $size = count($parts); $nIndex < $size; $nIndex = $nIndex + 2)
 			{
-				break;
-			}
-
-			$j = strpos($query, "N'", $startPos);
-			$k = strpos($query, '"', $startPos);
-
-			if (($k !== false) && (($k < $j) || ($j === false)))
-			{
-				$quoteChar = '"';
-				$j = $k;
-			}
-			else
-			{
-				$quoteChar = "'";
-			}
-
-			if ($j === false)
-			{
-				$j = $n;
-			}
-
-			$literal .= str_replace($prefix, $this->tablePrefix, substr($query, $startPos, $j - $startPos));
-			$startPos = $j;
-
-			$j = $startPos + 1;
-
-			if ($j >= $n)
-			{
-				break;
-			}
-
-			// Quote comes first, find end of quote
-			while (true)
-			{
-				$k = strpos($query, $quoteChar, $j);
-				$escaped = false;
-
-				if ($k === false)
+				if (strpos($parts[$nIndex], $prefix) !== false)
 				{
-					break;
+					$parts[$nIndex] = str_replace($prefix, $this->tablePrefix, $parts[$nIndex]);
 				}
-
-				$l = $k - 1;
-
-				while ($l >= 0 && $query{$l} == '\\')
-				{
-					$l--;
-					$escaped = !$escaped;
-				}
-
-				if ($escaped)
-				{
-					$j = $k + 1;
-					continue;
-				}
-
-				break;
 			}
 
-			if ($k === false)
-			{
-				// Error in the query - no end quote; ignore it
-				break;
-			}
-
-			$literal .= substr($query, $startPos, $k - $startPos + 1);
-			$startPos = $k + 1;
+			$query = implode("'", $parts);
+		}
+		else
+		{
+			$query = str_replace($prefix, $this->tablePrefix, $query);
 		}
 
-		if ($startPos < $n)
-		{
-			$literal .= substr($query, $startPos, $n - $startPos);
-		}
-
-		return $literal;
+		return $query;
 	}
 
 	/**
@@ -803,7 +760,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  boolean  True if the database was successfully selected.
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 * @throws  RuntimeException
 	 */
 	public function select($database)
@@ -817,7 +774,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 
 		if (!sqlsrv_query($this->connection, 'USE ' . $database, null, array('scrollable' => SQLSRV_CURSOR_STATIC)))
 		{
-			throw new JDatabaseExceptionConnecting('Could not connect to database');
+			throw new JDatabaseExceptionConnecting('Could not connect to SQL Server database.');
 		}
 
 		return true;
@@ -828,7 +785,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  boolean  True on success.
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 */
 	public function setUtf()
 	{
@@ -842,7 +799,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  void
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 * @throws  RuntimeException
 	 */
 	public function transactionCommit($toSavepoint = false)
@@ -869,7 +826,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  void
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 * @throws  RuntimeException
 	 */
 	public function transactionRollback($toSavepoint = false)
@@ -902,7 +859,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  void
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 * @throws  RuntimeException
 	 */
 	public function transactionStart($asSavepoint = false)
@@ -935,7 +892,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  mixed  Either the next row from the result set or false if there are no more rows.
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 */
 	protected function fetchArray($cursor = null)
 	{
@@ -949,7 +906,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  mixed  Either the next row from the result set or false if there are no more rows.
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 */
 	protected function fetchAssoc($cursor = null)
 	{
@@ -964,7 +921,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  mixed   Either the next row from the result set or false if there are no more rows.
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 */
 	protected function fetchObject($cursor = null, $class = 'stdClass')
 	{
@@ -981,7 +938,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  void
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 */
 	protected function freeResult($cursor = null)
 	{
@@ -996,7 +953,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  boolean  True if the field exists in the table.
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 */
 	protected function checkFieldExists($table, $field)
 	{
@@ -1025,32 +982,36 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  string   The processed SQL statement.
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 */
 	protected function limit($query, $limit, $offset)
 	{
-		if ($limit == 0 && $offset == 0)
+		if ($limit)
+		{
+			$total = $offset + $limit;
+
+			$position = stripos($query, 'SELECT');
+			$distinct = stripos($query, 'SELECT DISTINCT');
+
+			if ($position === $distinct)
+			{
+				$query = substr_replace($query, 'SELECT DISTINCT TOP ' . (int) $total, $position, 15);
+			}
+			else
+			{
+				$query = substr_replace($query, 'SELECT TOP ' . (int) $total, $position, 6);
+			}
+		}
+
+		if (!$offset)
 		{
 			return $query;
 		}
 
-		$start = $offset + 1;
-		$end   = $offset + $limit;
-
-		$orderBy = stristr($query, 'ORDER BY');
-
-		if (is_null($orderBy) || empty($orderBy))
-		{
-			$orderBy = 'ORDER BY (select 0)';
-		}
-
-		$query = str_ireplace($orderBy, '', $query);
-
-		$rowNumberText = ', ROW_NUMBER() OVER (' . $orderBy . ') AS RowNumber FROM ';
-
-		$query = preg_replace('/\sFROM\s/i', $rowNumberText, $query, 1);
-
-		return $query;
+		return PHP_EOL
+			. 'SELECT * FROM (SELECT *, ROW_NUMBER() OVER (ORDER BY (SELECT 0)) AS RowNumber FROM ('
+			. $query
+			. PHP_EOL . ') AS A) AS A WHERE RowNumber > ' . (int) $offset;
 	}
 
 	/**
@@ -1063,7 +1024,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  JDatabaseDriverSqlsrv  Returns this object to support chaining.
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 * @throws  RuntimeException
 	 */
 	public function renameTable($oldTable, $newTable, $backup = null, $prefix = null)
@@ -1092,7 +1053,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  JDatabaseDriverSqlsrv  Returns this object to support chaining.
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 * @throws  RuntimeException
 	 */
 	public function lockTable($tableName)
@@ -1105,7 +1066,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  JDatabaseDriverSqlsrv  Returns this object to support chaining.
 	 *
-	 * @since   12.1
+	 * @since   3.0.0
 	 * @throws  RuntimeException
 	 */
 	public function unlockTables()
@@ -1172,7 +1133,7 @@ class JDatabaseDriverSqlsrv extends JDatabaseDriver
 	 *
 	 * @return  string  The query that creates database
 	 *
-	 * @since   12.2
+	 * @since   3.0.1
 	 */
 	protected function getCreateDatabaseQuery($options, $utf)
 	{

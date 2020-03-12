@@ -3,7 +3,7 @@
  * @package     Joomla.Administrator
  * @subpackage  com_joomlaupdate
  *
- * @copyright   Copyright (C) 2005 - 2017 Open Source Matters, Inc. All rights reserved.
+ * @copyright   Copyright (C) 2005 - 2020 Open Source Matters, Inc. All rights reserved.
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
 
@@ -25,7 +25,7 @@ class JoomlaupdateControllerUpdate extends JControllerLegacy
 	 */
 	public function download()
 	{
-		JSession::checkToken() or jexit(JText::_('JINVALID_TOKEN'));
+		$this->checkToken();
 
 		$options['format'] = '{DATE}\t{TIME}\t{LEVEL}\t{CODE}\t{MESSAGE}';
 		$options['text_file'] = 'joomla_update.php';
@@ -44,11 +44,28 @@ class JoomlaupdateControllerUpdate extends JControllerLegacy
 		$this->_applyCredentials();
 
 		/** @var JoomlaupdateModelDefault $model */
-		$model = $this->getModel('Default');
-		$file = $model->download();
-
-		$message = null;
+		$model       = $this->getModel('Default');
+		$result      = $model->download();
+		$file        = $result['basename'];
+		$message     = null;
 		$messageType = null;
+
+		// The validation was not successful for now just a warning.
+		// TODO: In Joomla 4 this will abort the installation
+		if ($result['check'] === false)
+		{
+			$message = JText::_('COM_JOOMLAUPDATE_VIEW_UPDATE_CHECKSUM_WRONG');
+			$messageType = 'warning';
+
+			try
+			{
+				JLog::add($message, JLog::INFO, 'Update');
+			}
+			catch (RuntimeException $exception)
+			{
+				// Informational log only
+			}
+		}
 
 		if ($file)
 		{
@@ -84,7 +101,7 @@ class JoomlaupdateControllerUpdate extends JControllerLegacy
 	 */
 	public function install()
 	{
-		JSession::checkToken('get') or jexit(JText::_('JINVALID_TOKEN'));
+		$this->checkToken('get');
 
 		$options['format'] = '{DATE}\t{TIME}\t{LEVEL}\t{CODE}\t{MESSAGE}';
 		$options['text_file'] = 'joomla_update.php';
@@ -217,7 +234,7 @@ class JoomlaupdateControllerUpdate extends JControllerLegacy
 	public function purge()
 	{
 		// Check for request forgeries
-		JSession::checkToken() or jexit(JText::_('JINVALID_TOKEN'));
+		$this->checkToken();
 
 		// Purge updates
 		/** @var JoomlaupdateModelDefault $model */
@@ -238,7 +255,7 @@ class JoomlaupdateControllerUpdate extends JControllerLegacy
 	public function upload()
 	{
 		// Check for request forgeries
-		JSession::checkToken() or jexit(JText::_('JINVALID_TOKEN'));
+		$this->checkToken();
 
 		// Did a non Super User tried to upload something (a.k.a. pathetic hacking attempt)?
 		JFactory::getUser()->authorise('core.admin') or jexit(JText::_('JLIB_APPLICATION_ERROR_ACCESS_FORBIDDEN'));
@@ -273,7 +290,7 @@ class JoomlaupdateControllerUpdate extends JControllerLegacy
 	public function captive()
 	{
 		// Check for request forgeries
-		JSession::checkToken('get') or jexit(JText::_('JINVALID_TOKEN'));
+		$this->checkToken('get');
 
 		// Did a non Super User tried to upload something (a.k.a. pathetic hacking attempt)?
 		if (!JFactory::getUser()->authorise('core.admin'))
@@ -307,7 +324,7 @@ class JoomlaupdateControllerUpdate extends JControllerLegacy
 	public function confirm()
 	{
 		// Check for request forgeries
-		JSession::checkToken() or jexit(JText::_('JINVALID_TOKEN'));
+		$this->checkToken();
 
 		// Did a non Super User tried to upload something (a.k.a. pathetic hacking attempt)?
 		if (!JFactory::getUser()->authorise('core.admin'))
@@ -365,7 +382,7 @@ class JoomlaupdateControllerUpdate extends JControllerLegacy
 	 * Method to display a view.
 	 *
 	 * @param   boolean  $cachable   If true, the view output will be cached
-	 * @param   array    $urlparams  An array of safe url parameters and their variable types, for valid values see {@link JFilterInput::clean()}.
+	 * @param   array    $urlparams  An array of safe URL parameters and their variable types, for valid values see {@link JFilterInput::clean()}.
 	 *
 	 * @return  JoomlaupdateControllerUpdate  This object to support chaining.
 	 *
@@ -421,7 +438,7 @@ class JoomlaupdateControllerUpdate extends JControllerLegacy
 				// Add credentials to the session
 				if (!JClientHelper::setCredentials('ftp', $user, $pass))
 				{
-					JError::raiseWarning('SOME_ERROR_CODE', JText::_('JLIB_CLIENT_ERROR_HELPER_SETCREDENTIALSFROMREQUEST_FAILED'));
+					JError::raiseWarning(500, JText::_('JLIB_CLIENT_ERROR_HELPER_SETCREDENTIALSFROMREQUEST_FAILED'));
 				}
 			}
 		}
@@ -437,7 +454,7 @@ class JoomlaupdateControllerUpdate extends JControllerLegacy
 	public function finaliseconfirm()
 	{
 		// Check for request forgeries
-		JSession::checkToken() or jexit(JText::_('JINVALID_TOKEN'));
+		$this->checkToken();
 
 		// Did a non Super User try do this?
 		if (!JFactory::getUser()->authorise('core.admin'))
@@ -461,28 +478,10 @@ class JoomlaupdateControllerUpdate extends JControllerLegacy
 		// The login fails?
 		if (!$result)
 		{
-			try
-			{
-				JLog::add(JText::sprintf('COM_JOOMLAUPDATE_UPDATE_LOG_CONFIRM_FINALISE_FAIL'), JLog::INFO, 'Update');
-			}
-			catch (RuntimeException $exception)
-			{
-				// Informational log only
-			}
-
 			JFactory::getApplication()->enqueueMessage(JText::_('JGLOBAL_AUTH_INVALID_PASS'), 'warning');
 			$this->setRedirect('index.php?option=com_joomlaupdate&view=update&layout=finaliseconfirm');
 
 			return false;
-		}
-
-		try
-		{
-			JLog::add(JText::sprintf('COM_JOOMLAUPDATE_UPDATE_LOG_CONFIRM_FINALISE'), JLog::INFO, 'Update');
-		}
-		catch (RuntimeException $exception)
-		{
-			// Informational log only
 		}
 
 		// Redirect back to the actual finalise page

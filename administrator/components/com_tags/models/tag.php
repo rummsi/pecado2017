@@ -3,7 +3,7 @@
  * @package     Joomla.Administrator
  * @subpackage  com_tags
  *
- * @copyright   Copyright (C) 2005 - 2017 Open Source Matters, Inc. All rights reserved.
+ * @copyright   Copyright (C) 2005 - 2020 Open Source Matters, Inc. All rights reserved.
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
 
@@ -32,6 +32,17 @@ class TagsModelTag extends JModelAdmin
 	public $typeAlias = 'com_tags.tag';
 
 	/**
+	 * Allowed batch commands
+	 *
+	 * @var    array
+	 * @since  3.7.0
+	 */
+	protected $batch_commands = array(
+		'assetgroup_id' => 'batchAccess',
+		'language_id' => 'batchLanguage',
+	);
+
+	/**
 	 * Method to test whether a record can be deleted.
 	 *
 	 * @param   object  $record  A record object.
@@ -42,29 +53,12 @@ class TagsModelTag extends JModelAdmin
 	 */
 	protected function canDelete($record)
 	{
-		if (!empty($record->id))
+		if (empty($record->id) || $record->published != -2)
 		{
-			if ($record->published != -2)
-			{
-				return;
-			}
-
-			return parent::canDelete($record);
+			return false;
 		}
-	}
 
-	/**
-	 * Method to test whether a record can have its state changed.
-	 *
-	 * @param   object  $record  A record object.
-	 *
-	 * @return  boolean  True if allowed to change the state of the record. Defaults to the permission set in the component.
-	 *
-	 * @since   3.1
-	 */
-	protected function canEditState($record)
-	{
-		return parent::canEditState($record);
+		return parent::canDelete($record);
 	}
 
 	/**

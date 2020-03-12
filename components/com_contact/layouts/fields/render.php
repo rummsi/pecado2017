@@ -3,7 +3,7 @@
  * @package     Joomla.Site
  * @subpackage  com_contact
  *
- * @copyright   Copyright (C) 2005 - 2017 Open Source Matters, Inc. All rights reserved.
+ * @copyright   Copyright (C) 2005 - 2020 Open Source Matters, Inc. All rights reserved.
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
 defined('_JEXEC') or die;
@@ -41,7 +41,7 @@ if (key_exists('fields', $displayData))
 }
 else
 {
-	$fields = $item->fields ?: FieldsHelper::getFields($context, $item, true);
+	$fields = $item->jcfields ?: FieldsHelper::getFields($context, $item, true);
 }
 
 if (!$fields)
@@ -61,13 +61,14 @@ if (!$isMail)
 // Loop through the fields and print them
 foreach ($fields as $field)
 {
-	// If the value is empty dp nothing
-	if (!isset($field->value) || !$field->value)
+	// If the value is empty do nothing
+	if (!strlen($field->value) && !$isMail)
 	{
 		continue;
 	}
 
-	echo FieldsHelper::render($context, 'field.render', array('field' => $field));
+	$layout = $field->params->get('layout', 'render');
+	echo FieldsHelper::render($context, 'field.' . $layout, array('field' => $field));
 }
 
 if (!$isMail)
@@ -75,3 +76,4 @@ if (!$isMail)
 	// Close the container
 	echo '</dl>';
 }
+
