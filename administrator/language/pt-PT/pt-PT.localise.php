@@ -2,8 +2,8 @@
 /**
  * @package    Joomla.Language
  *
- * @copyright  Direitos de Autor (C) 2005 - 2015 Open Source Matters, Inc. Todos os direitos reservados.
- * @license    Licença Pública Geral GNU - versão 2 ou superior; ver LICENSE.txt
+ * @copyright  Direitos de Autor (c) 2005 - 2020 Open Source Matters, Inc. Todos os direitos reservados.
+ * @license  Pública Geral GNU - versão 2 ou posterior; ver ficheiro LICENSE.txt
  */
 
 defined('_JEXEC') or die;
@@ -73,7 +73,7 @@ abstract class pt_PTLocalise
 	 */
 	public static function getUpperLimitSearchWord()
 	{
-		return 40;
+		return 20;
 	}
 
 	/**

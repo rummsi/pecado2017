@@ -2,8 +2,8 @@
 /**
  * @package    Joomla.Language
  *
- * @copyright  Direitos de Autor (C) 2005 - 2015 Open Source Matters, Inc. Todos os direitos reservados.
- * @license    Licença Pública Geral GNU - versão 2 ou superior; ver LICENSE.txt
+ * @copyright  Direitos de Autor (c) 2005 - 2020 Open Source Matters, Inc. Todos os direitos reservados.
+ * @license  Pública Geral GNU - versão 2 ou posterior; ver ficheiro LICENSE.txt
  */
 
 defined('_JEXEC') or die;
@@ -16,11 +16,11 @@ defined('_JEXEC') or die;
 abstract class pt_PTLocalise
 {
 	/**
-	 * Devolve os sufixos potenciais para um número de itens especificados
+	 * Returns the potential suffixes for a specific number of items
 	 *
-	 * @param integer $count O número de itens.
+	 * @param   integer  $count  The number of items.
 	 *
-	 * @return  array  Uma lista de sufixos potenciais.
+	 * @return  array  An array of potential suffixes.
 	 *
 	 * @since   1.6
 	 */
@@ -73,13 +73,13 @@ abstract class pt_PTLocalise
 	 */
 	public static function getUpperLimitSearchWord()
 	{
-		return 40;
+		return 20;
 	}
 
 	/**
-	 * Devolve o número de caracteres a exibir durante uma pesquisa
+	 * Returns the number of chars to display when searching
 	 *
-	 * @return integer  O número de caracteres a exibir numa pesquisa.
+	 * @return  integer  The number of chars to display when searching.
 	 *
 	 * @since   1.6
 	 */
